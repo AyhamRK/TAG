@@ -16,6 +16,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -118,6 +119,16 @@ class Settings(BaseSettings):
 
     # ── Logging ───────────────────────────────────────────────────────
     log_level: str = "INFO"
+
+    @field_validator("books_dir", "pdf_data_dir")
+    @classmethod
+    def resolve_books_directory_case(cls, path: Path) -> Path:
+        """Find the bundled folder when its name differs only by case."""
+        if path.name not in {"books", "Books"} or path.is_dir():
+            return path
+
+        alternate = path.with_name("Books" if path.name == "books" else "books")
+        return alternate if alternate.is_dir() else path
 
     @property
     def cors_origins(self) -> list[str]:

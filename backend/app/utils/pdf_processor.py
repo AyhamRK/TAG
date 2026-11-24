@@ -26,13 +26,14 @@ from typing import List
 import fitz  # PyMuPDF
 from loguru import logger
 
+from app.core.config import settings
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Configuration
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Resolved once at import time so every call uses the same path.
-_PROJECT_ROOT = Path(__file__).resolve().parents[2]          # …/backend/
-BOOKS_DIR: Path = _PROJECT_ROOT / "data" / "books"
+BOOKS_DIR: Path = settings.books_dir
 
 DEFAULT_CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", 500))
 DEFAULT_CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", 50))

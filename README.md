@@ -74,7 +74,7 @@ talal-rag-assistant/
 │   │   ├── services/               # Business logic (RAG, embeddings, LLM, topic filter)
 │   │   └── utils/                  # Shared helpers (PDF parsing, text splitting, logging)
 │   ├── data/
-│   │   ├── pdfs/                   # Place your PDF books here (git-ignored)
+│   │   ├── Books/                  # Source PDFs indexed on startup
 │   │   └── chroma_db/              # Persistent ChromaDB store (git-ignored)
 │   ├── tests/
 │   │   ├── unit/                   # Unit tests for individual services
@@ -83,14 +83,8 @@ talal-rag-assistant/
 │   └── main.py                     # FastAPI app entry point
 │
 ├── frontend/                       # React chat interface
-│   ├── public/
-│   └── src/
-│       ├── components/
-│       │   ├── Chat/               # ChatWindow, MessageBubble, InputBar
-│       │   └── UI/                 # Shared UI components (Spinner, ErrorBanner)
-│       ├── hooks/                  # Custom React hooks (useChat, useAutoScroll)
-│       ├── services/               # Axios API client
-│       └── utils/                  # Helper functions
+│   ├── index.html                   # Vite application entry
+│   └── src/                         # Chat, citations, and book library
 │
 ├── docs/                           # Additional documentation and diagrams
 ├── .env.example                    # Template for environment variables
@@ -106,8 +100,8 @@ Make sure you have the following installed:
 
 | Tool | Minimum Version | Check |
 |---|---|---|
-| Python | 3.10+ | `python --version` |
-| Node.js | 18+ | `node --version` |
+| Python | 3.11 recommended | `python --version` |
+| Node.js | 20+ | `node --version` |
 | npm | 9+ | `npm --version` |
 | Git | any | `git --version` |
 
@@ -157,14 +151,14 @@ pip install -r requirements.txt
 
 > First install may take several minutes — torch and transformers are large packages.
 
-### 5. Set up environment variables
+### 5. Configure local overrides if needed
 
 ```bash
 # From the project root
 cp .env.example .env
 ```
 
-Edit `.env` as needed (see [Environment Variables](#environment-variables)).
+Defaults work without an environment file or API key. Copy the example only to customize backend settings.
 
 ---
 
@@ -179,7 +173,7 @@ cd talal-rag-assistant/frontend
 ### 2. Install Node dependencies
 
 ```bash
-npm install
+npm ci
 ```
 
 ---
@@ -190,7 +184,7 @@ npm install
 
 ```bash
 # From backend/ with venv activated
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 The API will be available at: `http://localhost:8000`  
@@ -203,25 +197,23 @@ Interactive API docs: `http://localhost:8000/docs`
 npm start
 ```
 
-The React app will open at: `http://localhost:3000`
+Open http://localhost:3000. Vite forwards API requests to http://127.0.0.1:8000.
+Set `API_PROXY_TARGET` before starting Vite if your backend runs on another address.
+The first backend startup downloads the embedding model and indexes the bundled PDFs.
+The first question and first summary each download their respective local model.
+
+For a production bundle, run `npm run build` in `frontend/`. Serve `frontend/dist/`
+and forward `/health` and `/api/` to FastAPI. If the frontend and API use
+different origins, set `VITE_API_BASE_URL` at build time and add the frontend
+origin to the backend's `ALLOWED_ORIGINS`. Browser-facing Vite values are public.
 
 ---
 
 ## Adding PDF Books
 
-1. Place your PDF files inside `backend/data/pdfs/`.
-2. Call the ingestion endpoint to process and index them:
-
-```bash
-POST http://localhost:8000/api/v1/ingest
-```
-
-Or via curl:
-```bash
-curl -X POST http://localhost:8000/api/v1/ingest
-```
-
-This will parse the PDFs, create embeddings, and populate the ChromaDB vector store. You only need to do this once per set of books (the store is persisted to disk).
+Select **Upload PDF** in the book library to add and index a text-based PDF.
+You can also place PDFs in `backend/data/Books/` and restart the backend. The app supports both `Books` and `books`.
+Use the library to browse the indexed titles and manage uploaded books.
 
 ---
 
@@ -246,20 +238,20 @@ pytest tests/integration/ -v
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and configure:
+Backend overrides go in a local `.env` file at the repository root. Use `.env.example` as a template.
 
 | Variable | Default | Description |
 |---|---|---|
 | `APP_PORT` | `8000` | Backend server port |
-| `PDF_DATA_DIR` | `./data/pdfs` | Directory containing PDF books |
+| `BOOKS_DIR` | `./data/books` | Directory containing PDF books |
 | `CHROMA_DB_DIR` | `./data/chroma_db` | ChromaDB persistence directory |
 | `EMBEDDING_MODEL_NAME` | `sentence-transformers/all-MiniLM-L6-v2` | HuggingFace embedding model |
 | `LLM_MODEL_NAME` | `google/flan-t5-large` | HuggingFace LLM |
-| `LLM_MAX_NEW_TOKENS` | `256` | Max tokens in LLM response |
+| `LLM_MAX_NEW_TOKENS` | `512` | Max tokens in LLM response |
 | `CHUNK_SIZE` | `500` | Characters per text chunk |
 | `CHUNK_OVERLAP` | `50` | Overlap between consecutive chunks |
 | `RETRIEVER_TOP_K` | `4` | Number of chunks to retrieve per query |
-| `TOPIC_SIMILARITY_THRESHOLD` | `0.35` | Cosine similarity cutoff for topic filter |
+| `TOPIC_SIMILARITY_THRESHOLD` | `0.30` | Cosine similarity cutoff for topic filter |
 
 ---
 
